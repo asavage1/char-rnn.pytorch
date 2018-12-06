@@ -8,32 +8,37 @@ import argparse
 from helpers import *
 from model import *
 
-def generate(decoder, prime_str='A', predict_len=100, temperature=0.8, cuda=False):
-    hidden = decoder.init_hidden(1)
-    prime_input = Variable(char_tensor(prime_str).unsqueeze(0))
+def generate(decoder, vocab, prime_str=None, predict_len=100, temperature=0.8, cuda=False):  # TODO: change prime_str to be word(s)?
+    if prime_str is None:
+        prime_str = ['Who', 'is']
+
+    hidden = decoder.init_hidden(300)  # this size is the size of input?, so make it the length of the input (300 for glove word vectors)
+    prime_input = []
+    for s in prime_str:
+        prime_input.append(Variable(char_tensor(s, vocab).unsqueeze(0)))
 
     if cuda:
         hidden = hidden.cuda()
-        prime_input = prime_input.cuda()
+        prime_input = list(map(lambda x: x.cuda(), prime_input))
     predicted = prime_str
 
     # Use priming string to "build up" hidden state
     for p in range(len(prime_str) - 1):
-        _, hidden = decoder(prime_input[:,p], hidden)
+        _, hidden = decoder(prime_input[p][0,:], hidden)  # Building up the hidden state one word at a time
         
-    inp = prime_input[:,-1]
+    inp = prime_input[-1][0,:]  # Takes the previous word to look for the next one
     
     for p in range(predict_len):
         output, hidden = decoder(inp, hidden)
-        
+
         # Sample from the network as a multinomial distribution
-        output_dist = output.data.view(-1).div(temperature).exp()
+        output_dist = output[-1].data.view(-1).div(temperature).exp()  # take only the layer of output of the vocabulary
         top_i = torch.multinomial(output_dist, 1)[0]
 
         # Add predicted character to string and use as next input
-        predicted_char = all_characters[top_i]
-        predicted += predicted_char
-        inp = Variable(char_tensor(predicted_char).unsqueeze(0))
+        predicted_word = [vocab[top_i]]  # TODO: words
+        predicted += predicted_word
+        inp = Variable(char_tensor(predicted_word, vocab).unsqueeze(0))[0,:]
         if cuda:
             inp = inp.cuda()
 

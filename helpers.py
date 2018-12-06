@@ -5,27 +5,36 @@ import string
 import random
 import time
 import math
+import re
 import torch
+import spacy
+import numpy as np
+
+nlp = spacy.load('en_core_web_md')
+word2vec = lambda word: nlp.vocab[word].vector
 
 # Reading and un-unicode-encoding data
 
-all_characters = string.printable
-n_characters = len(all_characters)
-
 def read_file(filename):
     file = unidecode.unidecode(open(filename).read())
+    file = re.findall(r"[\w']+", file)
     return file, len(file)
 
 # Turning a string into a tensor
 
-def char_tensor(string):
-    tensor = torch.zeros(len(string)).long()
-    for c in range(len(string)):
-        try:
-            tensor[c] = all_characters.index(string[c])
-        except:
-            continue
-    return tensor
+def char_tensor(string, all_words):
+    string_vec = list(map(word2vec, string))
+    tensor = np.sum(string_vec, axis=0)
+    tensor = np.vectorize(lambda x: round(x - np.min(tensor)))(tensor)  # Normalize to be on scale [0, vocab_size)
+    return torch.tensor(tensor).long()
+
+    # tensor = torch.zeros(len(string)).long()
+    # for c in range(len(string)):
+    #     try:
+    #         tensor[c] = all_words.index(string[c])
+    #     except:
+    #         continue
+    # return tensor
 
 # Readable time elapsed
 

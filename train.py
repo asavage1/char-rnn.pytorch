@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import argparse
 import os
+# import spacy  # 300 dimensional vectors
 
 from tqdm import tqdm
 
@@ -28,20 +29,31 @@ argparser.add_argument('--shuffle', action='store_true')
 argparser.add_argument('--cuda', action='store_true')
 args = argparser.parse_args()
 
+args.chunk_len = 300  # TODO: Size of space glove vector
+
 if args.cuda:
     print("Using CUDA")
 
+# TODO: Change the file contain (question + partial_answer, rest_of_answer) pairs
 file, file_len = read_file(args.filename)
+all_words = list(set(file))  # TODO: the vocabulary--are we going to want to set this to only answer words?
+n_words = len(all_words)
 
-def random_training_set(chunk_len, batch_size):
+def random_training_set(chunk_len, batch_size):  # TODO: choose random question/answer instead of random chunk (maybe choose random input, output word vector once we're using that training set?)
     inp = torch.LongTensor(batch_size, chunk_len)
     target = torch.LongTensor(batch_size, chunk_len)
     for bi in range(batch_size):
+        # question, answer_word = random.choice(file)  # For choosing a random qa pair from the file
+        # inp[bi] = char_tensor(question, all_words=all_words)
+        # target[bi] = char_tensor(answer_word, all_words=all_words)
+
         start_index = random.randint(0, file_len - chunk_len)
         end_index = start_index + chunk_len + 1
         chunk = file[start_index:end_index]
-        inp[bi] = char_tensor(chunk[:-1])
-        target[bi] = char_tensor(chunk[1:])
+
+        # TODO: do these tensors have to be the same size?
+        inp[bi] = char_tensor(chunk[:-1], all_words=all_words)    # TODO: inp[bi] = char_tensor(question, all_words)
+        target[bi] = char_tensor(chunk[1:], all_words=all_words)  # TODO: inp[bi] = char_tensor(answer, all_words)
     inp = Variable(inp)
     target = Variable(target)
     if args.cuda:
@@ -73,9 +85,9 @@ def save():
 # Initialize models and start training
 
 decoder = CharRNN(
-    n_characters,
+    n_words,
     args.hidden_size,
-    n_characters,
+    n_words,
     model=args.model,
     n_layers=args.n_layers,
 )
@@ -92,12 +104,12 @@ loss_avg = 0
 try:
     print("Training for %d epochs..." % args.n_epochs)
     for epoch in tqdm(range(1, args.n_epochs + 1)):
-        loss = train(*random_training_set(args.chunk_len, args.batch_size))
+        loss = train(*random_training_set(args.chunk_len, args.batch_size))  # TODO: do we want to randomly select? A: Kinda
         loss_avg += loss
 
         if epoch % args.print_every == 0:
             print('[%s (%d %d%%) %.4f]' % (time_since(start), epoch, epoch / args.n_epochs * 100, loss))
-            print(generate(decoder, 'Wh', 100, cuda=args.cuda), '\n')
+            print(generate(decoder, all_words, None, 20, cuda=args.cuda), '\n')
 
     print("Saving...")
     save()
