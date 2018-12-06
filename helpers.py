@@ -20,6 +20,17 @@ def read_file(filename):
     file = re.findall(r"[\w']+", file)
     return file, len(file)
 
+def read_file2(filename):
+    qa_pairs = []
+    with open(filename, 'r') as f:
+        qa_pairs = [line.rstrip() for line in f.readlines()]
+
+    qa_pairs = list(zip(qa_pairs, qa_pairs[1:]))
+    qa_pairs = [qa_pairs[i] for i in range(0, len(qa_pairs), 2)]
+
+    return qa_pairs
+
+
 # Turning a string into a tensor
 
 def char_tensor(string, all_words):

@@ -34,8 +34,10 @@ args.chunk_len = 300  # TODO: Size of space glove vector
 if args.cuda:
     print("Using CUDA")
 
-# TODO: Change the file contain (question + partial_answer, rest_of_answer) pairs
+# TODO: Change the file contain (question + partial_answer, answer_word) pairs
+# Parsing file:
 file, file_len = read_file(args.filename)
+training_pairs = read_file2(args.filename)
 all_words = list(set(file))  # TODO: the vocabulary--are we going to want to set this to only answer words?
 n_words = len(all_words)
 
@@ -43,17 +45,17 @@ def random_training_set(chunk_len, batch_size):  # TODO: choose random question/
     inp = torch.LongTensor(batch_size, chunk_len)
     target = torch.LongTensor(batch_size, chunk_len)
     for bi in range(batch_size):
-        # question, answer_word = random.choice(file)  # For choosing a random qa pair from the file
-        # inp[bi] = char_tensor(question, all_words=all_words)
-        # target[bi] = char_tensor(answer_word, all_words=all_words)
+        question, answer_word = random.choice(training_pairs)  # For choosing a random qa pair from the file
+        inp[bi] = char_tensor(question, all_words=all_words)
+        target[bi] = char_tensor(answer_word, all_words=all_words)
 
-        start_index = random.randint(0, file_len - chunk_len)
-        end_index = start_index + chunk_len + 1
-        chunk = file[start_index:end_index]
+        # start_index = random.randint(0, file_len - chunk_len)
+        # end_index = start_index + chunk_len + 1
+        # chunk = file[start_index:end_index]
 
         # TODO: do these tensors have to be the same size?
-        inp[bi] = char_tensor(chunk[:-1], all_words=all_words)    # TODO: inp[bi] = char_tensor(question, all_words)
-        target[bi] = char_tensor(chunk[1:], all_words=all_words)  # TODO: inp[bi] = char_tensor(answer, all_words)
+        # inp[bi] = char_tensor(chunk[:-1], all_words=all_words)    # TODO: inp[bi] = char_tensor(question, all_words)
+        # target[bi] = char_tensor(chunk[1:], all_words=all_words)  # TODO: inp[bi] = char_tensor(answer, all_words)
     inp = Variable(inp)
     target = Variable(target)
     if args.cuda:
